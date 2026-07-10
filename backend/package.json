@@ -1,0 +1,19 @@
+{
+  "name": "stadium-copilot-backend",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "echo \"dev server not yet implemented\"",
+    "build": "echo \"build not yet implemented\" && exit 0",
+    "lint": "echo \"lint not yet configured\" && exit 0",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  }
+}

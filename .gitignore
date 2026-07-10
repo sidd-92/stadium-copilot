@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+build/
+**/dist/
+**/build/
+.vite/
+
+# Environment / secrets - NEVER commit these
+.env
+.env.*
+*.env
+*service-account*.json
+*credentials*.json
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars
+infra/.terraform.lock.hcl
+infra/crash.log
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Docker
+*.pid
