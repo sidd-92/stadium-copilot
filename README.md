@@ -1,66 +1,132 @@
 # Stadium Copilot
 
 A GenAI-enabled stadium operations and fan experience solution for FIFA World Cup 2026.
-Built solo for [hackathon name] using Antigravity, React, Node.js, and Google Cloud.
+Built solo for [hackathon name] using React, Node.js, and Google Cloud.
 
 ## MVP Scope
 
-1. **Live Match Companion** — real-time score/event ingestion (worldcupapi.com) with push notifications
-2. **Queue-Aware Food Ordering** — QR-based ordering with queue-aware stand suggestions and incident-disruption handling
+1. **Live Match Companion** — real-time score/event ingestion ([worldcup26.ir](https://worldcup26.ir)) published to Pub/Sub and cached in Memorystore
+2. **Queue-Aware Food Ordering** — QR-based ordering with a full order state machine and Gemini-powered incident-disruption handling (auto-reassignment or refund)
 
-Text-based multilingual support (native-language Gemini generation, e.g. French/Portuguese) is included
-as an accessible substitute for a full voice assistant.
+Both services are built, deployed, and verified end-to-end against real infrastructure — see [Status](#status).
 
 ## Repo Structure
 
 ```
 stadium-copilot/
-  frontend/    React + TypeScript + Vite -> Firebase Hosting
+  frontend/    React + TypeScript + Vite -> Firebase Hosting (not yet built)
   backend/     Node.js 22 + TypeScript services -> Docker on Cloud Run
+    src/ingestion-service/   Polls worldcup26.ir, publishes match events, writes Redis cache
+    src/order-service/       Menu browsing, order placement, disruption handling
   infra/       Terraform (one-command provision/teardown)
   .github/     CI workflows (lint, build, test)
 ```
 
-## Architecture (short version)
+## Architecture
 
 ```
-Cloud Scheduler -> Cloud Run (ingestion) -> Pub/Sub -> Memorystore (cache)
-                                                |
-                                          Firestore (structured data)
-                                                |
-                              Vertex AI (Gemini Flash/Pro) + Vertex AI Search
+Cloud Scheduler (1 min)              Pub/Sub push (OIDC)
+       |                                     |
+       v                                     v
+ingestion-service  --publish-->  match-events / stand-status topics  --push-->  order-service
+(Cloud Run,                              |                                    (Cloud Run,
+ INTERNAL_ONLY,                          v                                     public,
+ scale 0-3)                        Memorystore (Redis)                        scale 0-10)
+       |                           60s TTL cache                                    |
+       v                                                                            v
+worldcup26.ir                                                              Firestore (orders, stands)
+                                                                                     |
+                                                                                     v
+                                                                       Vertex AI Gemini Flash
+                                                                    (menu summaries, reassignment msgs)
 ```
 
-One shared backbone (ingestion -> Pub/Sub -> Memorystore cache, Firestore for
-structured metadata, Gemini Flash for fan-facing synthesis) is reused across
-both MVP features rather than building parallel pipelines per feature.
+- **ingestion-service** (internal only, woken by Cloud Scheduler every 1 min, internally loops ~15-30s per invocation for effective sub-minute freshness): polls `GET /get/games`, filters to `time_elapsed === "live"`, publishes one `match-events` message per live match (with `match_id`/`status` as Pub/Sub attributes) and writes the same data to Redis (`match:{id}`, 60s TTL). Auth JWT is read from Secret Manager at runtime, cached in memory for the container's lifetime. Ships a `MOCK_MODE` fixture-cycling fallback for demoing if worldcup26.ir is down.
+- **order-service** (public, no auth on menu browsing — all query params sanitized before reaching Gemini): `GET /menu/:stand_id`, `POST /orders`, `GET /orders/:order_id`, and `POST /events/stand-status` (the Pub/Sub push target for stand-closure incidents). On an incident, it queries affected orders, finds 1-2 alternate stands with overlapping dietary tags and a lower queue, and uses Gemini Flash to generate one short reassignment/refund message per order — always in the requested language (English/French/Portuguese supported, baked into the system prompt, not translated after the fact).
 
-## Local Development
+## Infrastructure (Terraform, `infra/`)
+
+All resources below are live in `promptwars-502109` (`us-central1`) and verified via `gcloud`, not just `terraform state`:
+
+| Resource | Real name | Notes |
+|---|---|---|
+| Cloud Run | `ingestion-service` | `INGRESS_TRAFFIC_INTERNAL_ONLY`, scale 0-3, VPC connector attached |
+| Cloud Run | `order-service` | `INGRESS_TRAFFIC_ALL`, scale 0-10, `allUsers` has `run.invoker` |
+| Cloud Scheduler | `poll-match-events` | `* * * * *`, OIDC → `ingestion-service /poll` |
+| Pub/Sub topic | `match-events` | published by ingestion-service |
+| Pub/Sub topic | `stand-status` (+ `stand-status-dlq`) | consumed by order-service |
+| Pub/Sub sub | `match-events-match-companion-pull` | pull, for a future match-companion consumer |
+| Pub/Sub sub | `stand-status-order-service-push` | **push**, OIDC, 5-attempt DLQ — wakes order-service from zero rather than requiring an always-on puller |
+| Firestore | `(default)`, native mode | `orders/{id}`, `stands/{id}` |
+| Memorystore | `stadium-copilot-cache` | Redis, Basic tier, 1GB, `DIRECT_PEERING` |
+| VPC connector | `stadium-copilot-vpc` | e2-micro, min 2 / max 3 — lets Cloud Run reach Redis's internal IP |
+| Secret Manager | `worldcup26-jwt-token` | value added out-of-band via `gcloud secrets versions add`, never in Terraform state |
+| Secret Manager | `weather-api-key` | provisioned, not yet consumed by any service |
+| Artifact Registry | `stadium-copilot-backend` | one Docker repo, both service images |
+| IAM | `ingestion-service` SA | `pubsub.publisher`, `datastore.user`, secret accessor on the JWT secret |
+| IAM | `order-service` SA | `datastore.user`, `pubsub.subscriber`, `aiplatform.user`, `run.invoker` (self, for the push sub) |
+
+Two service accounts, not one shared identity — a bug in the public-facing `order-service` can't forge match events or read a secret it doesn't need.
 
 ```bash
-# Backend
-cd backend && npm install && npm run dev
+cd infra
+terraform init
+terraform plan -var="gcp_project_id=promptwars-502109"
+terraform apply -var="gcp_project_id=promptwars-502109"
 
-# Frontend
-cd frontend && npm install && npm run dev
-
-# Infra (provision)
-cd infra && terraform init && terraform plan && terraform apply
-
-# Infra (teardown)
-cd infra && terraform destroy
+# Teardown
+terraform destroy -var="gcp_project_id=promptwars-502109"
 ```
+
+## Backend (`backend/`)
+
+```bash
+cd backend
+npm install
+npm test              # 35 tests: unit + mocked-dependency + HTTP-layer integration, no network required
+npm run build          # tsc -> dist/
+
+npm run dev:ingestion   # tsx watch, local dev server
+npm run dev:order       # tsx watch, local dev server
+```
+
+### Build and deploy a service image
+
+One Dockerfile, both services — the entry point is picked at build time:
+
+```bash
+docker build --platform linux/amd64 --build-arg SERVICE=ingestion-service \
+  -t us-central1-docker.pkg.dev/promptwars-502109/stadium-copilot-backend/ingestion-service:latest .
+docker push us-central1-docker.pkg.dev/promptwars-502109/stadium-copilot-backend/ingestion-service:latest
+gcloud run deploy ingestion-service --region=us-central1 --project=promptwars-502109 \
+  --image=us-central1-docker.pkg.dev/promptwars-502109/stadium-copilot-backend/ingestion-service:latest
+
+# same pattern with --build-arg SERVICE=order-service for the order service
+```
+
+### One-time setup the code depends on
+
+- **worldcup26.ir JWT**: register/authenticate once yourself (`POST /auth/register` or `/auth/authenticate`), then push the token — it's never generated or stored by the app itself:
+  ```bash
+  echo -n "<jwt>" | gcloud secrets versions add worldcup26-jwt-token --project=promptwars-502109 --data-file=-
+  ```
+- **Firestore seed data**: `stands/{stand_id}` documents must exist before `/menu/:stand_id` or `/orders` will return anything. `backend/seed-test-stand.mjs` and `seed-second-stand.mjs` seed two test stands (`test-stand-1`, `test-stand-2`, same `match_id`) for manual end-to-end testing.
 
 ## Cost Notes
 
-Hackathon-scale usage runs at effectively $0 across Cloud Run, Firestore,
-Pub/Sub, Cloud Scheduler, Secret Manager, and Firebase Hosting free tiers.
-The one non-free component is Memorystore (Redis) — provision it via
-Terraform only while actively developing/demoing, and `terraform destroy`
-between sessions to avoid standing cost.
+Not effectively $0 at this scale — two resources are always-on regardless of traffic:
+
+- **Memorystore (Redis, Basic 1GB)**: ~$35/month, no scale-to-zero.
+- **VPC connector** (min 2 instances): ~$12-18/month.
+- **ingestion-service compute**: Cloud Scheduler fires every 1 minute, but each invocation internally loops for ~50s to get sub-minute freshness — so it's billed close to continuously (~$40-50/month), not truly scale-to-zero despite briefly hitting zero between polls.
+
+Rough total if left running a full month: **~$90-110**. Cheapest lever for the judging window: pause the Cloud Scheduler job once live matches stop (`gcloud scheduler jobs pause poll-match-events`), or `terraform destroy` / `terraform apply` around actual demo windows rather than leaving everything up continuously.
 
 ## Status
 
-No code has shipped yet — this repo currently holds the project scaffold,
-CI configuration, and infrastructure-as-code setup. See open issues / project
-board for build progress.
+Both MVP services are **built, deployed, and verified end-to-end against real infrastructure** (not mocked):
+
+- ingestion-service: real JWT auth against worldcup26.ir confirmed working, live match data (Norway vs England, QF) observed flowing through Pub/Sub with correct message attributes and no scorer-field leakage, Redis write/read round-trip directly verified.
+- order-service: `GET /menu/:stand_id` returns real Firestore data with a genuine Gemini-generated summary (multi-language confirmed, French tested); `POST /orders` → `GET /orders/:id` round-trips through Firestore; a real `stand_closed_incident` Pub/Sub push was fired and confirmed to reassign an order to an alternate stand with a Gemini-generated message, all reflected correctly in Firestore.
+
+**Not yet built**: frontend (React/Vite/Firebase Hosting scaffold exists but is empty), a producer for the `stand-status` topic (order-service defines the consumer contract but nothing publishes real incidents yet), and any notification channel to actually surface reassignment messages to a fan.

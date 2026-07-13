@@ -4,10 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "echo \"dev server not yet implemented\"",
-    "build": "echo \"build not yet implemented\" && exit 0",
+    "dev:ingestion": "tsx watch src/ingestion-service/index.ts",
+    "dev:order": "tsx watch src/order-service/index.ts",
+    "build": "tsc -p tsconfig.json",
     "lint": "echo \"lint not yet configured\" && exit 0",
-    "test": "echo \"no tests yet\" && exit 0"
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -15,5 +16,23 @@
   "private": true,
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.11.0",
+    "@google-cloud/pubsub": "^4.9.0",
+    "@google-cloud/secret-manager": "^5.6.0",
+    "@google/genai": "^0.15.0",
+    "express": "^4.21.1",
+    "google-auth-library": "^9.15.0",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }

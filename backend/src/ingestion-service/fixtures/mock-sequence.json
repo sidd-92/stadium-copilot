@@ -1,0 +1,70 @@
+[
+  {
+    "games": [
+      {
+        "id": "999",
+        "home_team_name_en": "Mockland",
+        "away_team_name_en": "Testonia",
+        "home_score": "0",
+        "away_score": "0",
+        "finished": "FALSE",
+        "time_elapsed": "notstarted",
+        "group": "A",
+        "type": "group",
+        "local_date": "07/11/2026 17:00",
+        "stadium_id": "1"
+      }
+    ]
+  },
+  {
+    "games": [
+      {
+        "id": "999",
+        "home_team_name_en": "Mockland",
+        "away_team_name_en": "Testonia",
+        "home_score": "0",
+        "away_score": "0",
+        "finished": "FALSE",
+        "time_elapsed": "live",
+        "group": "A",
+        "type": "group",
+        "local_date": "07/11/2026 17:00",
+        "stadium_id": "1"
+      }
+    ]
+  },
+  {
+    "games": [
+      {
+        "id": "999",
+        "home_team_name_en": "Mockland",
+        "away_team_name_en": "Testonia",
+        "home_score": "1",
+        "away_score": "0",
+        "finished": "FALSE",
+        "time_elapsed": "live",
+        "group": "A",
+        "type": "group",
+        "local_date": "07/11/2026 17:00",
+        "stadium_id": "1"
+      }
+    ]
+  },
+  {
+    "games": [
+      {
+        "id": "999",
+        "home_team_name_en": "Mockland",
+        "away_team_name_en": "Testonia",
+        "home_score": "1",
+        "away_score": "0",
+        "finished": "TRUE",
+        "time_elapsed": "finished",
+        "group": "A",
+        "type": "group",
+        "local_date": "07/11/2026 17:00",
+        "stadium_id": "1"
+      }
+    ]
+  }
+]
