@@ -1,6 +1,6 @@
 import { checkHealth, fetchGames, RateLimitedError, UpstreamError } from "./worldcup26-client";
 import { publishMatchEvent } from "./pubsub-publisher";
-import { writeMatchToCache } from "./redis-cache";
+import { writeAllMatchesToCache, writeMatchToCache } from "./redis-cache";
 import { getMockGames } from "./mock-data";
 import type { MatchEvent, RawMatch } from "./types";
 
@@ -41,7 +41,19 @@ export function toMatchEvent(match: RawMatch): MatchEvent {
 }
 
 export async function processLiveMatches(games: RawMatch[]): Promise<MatchEvent[]> {
-  const liveEvents = games.filter(isLive).map(toMatchEvent);
+  const allEvents = games.map(toMatchEvent);
+  // MatchEvent carries the same time_elapsed field as RawMatch, so the
+  // same defensive "only exactly 'live' counts" check applies here.
+  const liveEvents = allEvents.filter((event) => event.time_elapsed === "live");
+
+  // Full-schedule snapshot (every match, any status) — powers the
+  // "upcoming matches" list. Independent of the live-only publish/cache
+  // path below: a failure here shouldn't block live-match handling.
+  try {
+    await writeAllMatchesToCache(allEvents);
+  } catch (err) {
+    console.error("[ingestion] failed to write full match snapshot to cache:", err);
+  }
 
   for (const event of liveEvents) {
     // Each match is independent: a Redis or Pub/Sub failure on one match

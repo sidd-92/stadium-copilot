@@ -1,10 +1,20 @@
 import express from "express";
+import cors from "cors";
 import { getMenuForStand } from "./menu-service";
 import { createOrder, estimateEtaMinutes, getOrder, getStand } from "./order-store";
 import { handleStandClosedIncident } from "./disruption-handler";
-import type { OrderItem, PubSubPushEnvelope, StandStatusEventPayload } from "./types";
+import { readAllMatchesFromCache, readMatchFromCache } from "./redis-cache";
+import type { MatchEvent, OrderItem, PubSubPushEnvelope, StandStatusEventPayload } from "./types";
 
 export const app = express();
+
+// This is a public, unauthenticated JSON API with no cookies/credentials
+// involved — a fan's browser hits it directly from the frontend origin
+// (Firebase Hosting in prod, localhost in dev). Open CORS is appropriate
+// here; it's not gating anything sensitive (menu data is already public
+// via /menu/:stand_id, order lookups only ever return what the caller
+// already has the order_id for).
+app.use(cors());
 app.use(express.json());
 
 app.get("/", (_req, res) => {
@@ -57,6 +67,55 @@ app.post("/orders", async (req, res) => {
     res.status(201).json({ ...order, eta_minutes });
   } catch (err) {
     console.error("[order-service] POST /orders failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+// worldcup26.ir's local_date is "MM/DD/YYYY HH:mm" — not directly
+// sortable as a string, so parse it into a real Date for ordering.
+// Malformed/missing dates sort last rather than throwing.
+function parseLocalDate(localDate: string): number {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/.exec(localDate);
+  if (!match) return Number.POSITIVE_INFINITY;
+  const [, month, day, year, hour, minute] = match;
+  return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
+}
+
+// Upcoming schedule, soonest first. Backed by ingestion-service's
+// full-schedule snapshot (matches:all) — must be registered before
+// /matches/:match_id or Express would match "upcoming" as a match_id.
+app.get("/matches/upcoming", async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const allMatches = (await readAllMatchesFromCache<MatchEvent>()) ?? [];
+
+    const upcoming = allMatches
+      .filter((match) => match.time_elapsed === "notstarted")
+      .sort((a, b) => parseLocalDate(a.local_date) - parseLocalDate(b.local_date))
+      .slice(0, limit);
+
+    res.status(200).json({ matches: upcoming });
+  } catch (err) {
+    console.error("[order-service] GET /matches/upcoming failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+// Read-only view into ingestion-service's Redis cache, so the frontend
+// can show live score/status without ever reaching the INTERNAL_ONLY
+// ingestion-service directly. 404 (not 200 with null) when nothing is
+// cached — that's the normal state whenever no match is currently live,
+// distinct from a real error.
+app.get("/matches/:match_id", async (req, res) => {
+  try {
+    const match = await readMatchFromCache<MatchEvent>(req.params.match_id);
+    if (!match) {
+      res.status(404).json({ error: "no live data cached for this match" });
+      return;
+    }
+    res.status(200).json(match);
+  } catch (err) {
+    console.error("[order-service] GET /matches/:match_id failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });

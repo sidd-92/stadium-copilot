@@ -1,3 +1,7 @@
+// Mirrors backend/src/order-service/types.ts and the MatchEvent shape
+// published by ingestion-service — kept in sync by hand since frontend
+// and backend are separate npm packages in this monorepo.
+
 export type OrderStatus = "placed" | "confirmed" | "preparing" | "ready_for_pickup" | "collected" | "disrupted";
 
 export type DisruptionResolution = "reassigned" | "refund_pending" | null;
@@ -20,6 +24,7 @@ export interface Order {
   reassigned_to_stand_id: string | null;
   created_at: string;
   updated_at: string;
+  eta_minutes?: number;
 }
 
 export interface MenuItem {
@@ -30,44 +35,22 @@ export interface MenuItem {
   in_stock: boolean;
 }
 
-export interface Stand {
+export interface MenuResponse {
   stand_id: string;
   name: string;
   match_id: string;
-  menu: MenuItem[];
   status: "open" | "closed_incident";
   queue_length_estimate: number;
+  menu: MenuItem[];
+  summary: string;
 }
 
-// Standard Pub/Sub push subscription envelope. No producer for
-// stand-status exists yet in this codebase — this is the assumed
-// contract: JSON body (base64-decoded) carrying stand_id/event_type,
-// with the same fields optionally duplicated as message attributes
-// (mirroring the match_id/status attribute convention used on
-// match-events by ingestion-service).
-export interface PubSubPushEnvelope {
-  message?: {
-    data?: string;
-    attributes?: Record<string, string>;
-    messageId?: string;
-    publishTime?: string;
-  };
-  subscription?: string;
-}
-
-export interface StandStatusEventPayload {
-  stand_id?: string;
-  event_type?: string;
-  language?: string;
-}
-
-// Mirrors ingestion-service's MatchEvent (backend/src/ingestion-service/types.ts)
-// — this is what's cached under match:{id} in Redis, which this service
-// only ever reads, never writes.
 export interface MatchEvent {
   match_id: string;
-  home_team_name_en: string;
-  away_team_name_en: string;
+  // Absent for not-yet-determined fixtures (e.g. a final/3rd-place match
+  // before the semifinals resolve who's playing in it).
+  home_team_name_en?: string;
+  away_team_name_en?: string;
   home_score: string;
   away_score: string;
   finished: string;
@@ -78,3 +61,5 @@ export interface MatchEvent {
   stadium_id: string;
   last_updated: string;
 }
+
+export type SupportedLanguage = "en" | "fr" | "pt";

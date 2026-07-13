@@ -55,3 +55,19 @@ describe("writeMatchToCache", () => {
     expect(JSON.parse(payload as string).last_updated).toBe("2026-07-11T18:00:00.000Z");
   });
 });
+
+describe("writeAllMatchesToCache", () => {
+  beforeEach(() => {
+    setMock.mockClear();
+    vi.resetModules();
+  });
+
+  it("writes the full match list under matches:all with a 90s TTL", async () => {
+    const { writeAllMatchesToCache } = await import("../redis-cache");
+    const matches = [makeEvent({ match_id: "1", time_elapsed: "notstarted" }), makeEvent({ match_id: "2" })];
+
+    await writeAllMatchesToCache(matches);
+
+    expect(setMock).toHaveBeenCalledWith("matches:all", JSON.stringify(matches), "EX", 90);
+  });
+});

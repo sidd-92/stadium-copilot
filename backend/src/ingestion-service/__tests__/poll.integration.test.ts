@@ -4,6 +4,7 @@ import type { RawMatch } from "../types";
 const fetchGamesMock = vi.fn();
 const checkHealthMock = vi.fn().mockResolvedValue(true);
 const writeMatchToCacheMock = vi.fn().mockResolvedValue(undefined);
+const writeAllMatchesToCacheMock = vi.fn().mockResolvedValue(undefined);
 const publishMatchEventMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("../worldcup26-client", async () => {
@@ -17,6 +18,7 @@ vi.mock("../worldcup26-client", async () => {
 
 vi.mock("../redis-cache", () => ({
   writeMatchToCache: writeMatchToCacheMock,
+  writeAllMatchesToCache: writeAllMatchesToCacheMock,
 }));
 
 vi.mock("../pubsub-publisher", () => ({
@@ -45,6 +47,7 @@ describe("pollOnce integration", () => {
     fetchGamesMock.mockReset();
     checkHealthMock.mockClear();
     writeMatchToCacheMock.mockClear();
+    writeAllMatchesToCacheMock.mockClear();
     publishMatchEventMock.mockClear();
     delete process.env.MOCK_MODE;
   });
@@ -87,5 +90,22 @@ describe("pollOnce integration", () => {
     const cachedEvent = writeMatchToCacheMock.mock.calls[0][0];
     expect(cachedEvent).not.toHaveProperty("home_scorers");
     expect(cachedEvent).not.toHaveProperty("away_scorers");
+  });
+
+  it("caches the full schedule snapshot including non-live matches, not just live ones", async () => {
+    fetchGamesMock.mockResolvedValue([
+      makeMatch({ id: "1", time_elapsed: "notstarted" }),
+      makeMatch({ id: "2", time_elapsed: "live" }),
+      makeMatch({ id: "3", time_elapsed: "finished" }),
+    ]);
+
+    const { pollOnce } = await import("../poll");
+    await pollOnce();
+
+    // Only match 2 is live (publish/per-match cache), but the full
+    // snapshot must contain all three regardless of status.
+    expect(writeAllMatchesToCacheMock).toHaveBeenCalledTimes(1);
+    const snapshot = writeAllMatchesToCacheMock.mock.calls[0][0];
+    expect(snapshot.map((m: { match_id: string }) => m.match_id).sort()).toEqual(["1", "2", "3"]);
   });
 });

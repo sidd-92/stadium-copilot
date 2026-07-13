@@ -6,6 +6,7 @@ import type { MenuItem, Stand } from "./types";
 export interface MenuResponse {
   stand_id: string;
   name: string;
+  match_id: string;
   status: Stand["status"];
   queue_length_estimate: number;
   menu: MenuItem[];
@@ -85,6 +86,7 @@ export async function getMenuForStand(
   return {
     stand_id: stand.stand_id,
     name: stand.name,
+    match_id: stand.match_id,
     status: stand.status,
     queue_length_estimate: stand.queue_length_estimate,
     menu,
