@@ -48,4 +48,11 @@ Without this, it defaults to `http://localhost:8080` anyway. Screens that need s
 
 ## Deployment
 
-Firebase Hosting is the intended target (`firebase-tools` is already a dev dependency) but no `firebase.json` / hosting config exists yet — deployment has not been wired up.
+Live on Firebase Hosting: **[stadium-copilot.web.app](https://stadium-copilot.web.app)** (site `stadium-copilot` under project `promptwars-502109`, config in `firebase.json` / `.firebaserc`).
+
+```bash
+npm run build
+npx firebase-tools deploy --only hosting --project promptwars-502109
+```
+
+The build embeds `VITE_ORDER_SERVICE_URL` at compile time (see `.env.example` / `src/lib/api.ts`), pointing the deployed app at `order-service`'s Cloud Run URL rather than localhost. There's no CI/CD for this yet — it's a manual `.env.local` (or `.env.production`) + build + `firebase deploy` — so re-run the two commands above after backend changes that affect the API.

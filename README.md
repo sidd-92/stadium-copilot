@@ -8,13 +8,15 @@ Built solo for [hackathon name] using React, Node.js, and Google Cloud.
 1. **Live Match Companion** — real-time score/event ingestion ([worldcup26.ir](https://worldcup26.ir)) published to Pub/Sub and cached in Memorystore
 2. **Queue-Aware Food Ordering** — QR-based ordering with a full order state machine and Gemini-powered incident-disruption handling (auto-reassignment or refund)
 
-Both services are built, deployed, and verified end-to-end against real infrastructure — see [Status](#status).
+Both backend services and the frontend are built, deployed, and verified end-to-end against real infrastructure — see [Status](#status).
+
+**Live**: [stadium-copilot.web.app](https://stadium-copilot.web.app) (Firebase Hosting) — try `/menu/test-stand-1` for the fan ordering flow or `/stand/test-stand-1/orders` for the staff queue view.
 
 ## Repo Structure
 
 ```
 stadium-copilot/
-  frontend/    React + TypeScript + Vite -> Firebase Hosting (see frontend/README.md; hosting not yet wired up)
+  frontend/    React + TypeScript + Vite -> Firebase Hosting (live at stadium-copilot.web.app, see frontend/README.md)
   backend/     Node.js 22 + TypeScript services -> Docker on Cloud Run
     src/ingestion-service/   Polls worldcup26.ir, publishes match events, writes Redis cache
     src/order-service/       Menu browsing, order placement, disruption handling
@@ -112,6 +114,33 @@ gcloud run deploy ingestion-service --region=us-central1 --project=promptwars-50
   ```
 - **Firestore seed data**: `stands/{stand_id}` documents must exist before `/menu/:stand_id` or `/orders` will return anything. `backend/seed-test-stand.mjs` and `seed-second-stand.mjs` seed two test stands (`test-stand-1`, `test-stand-2`, same `match_id`) for manual end-to-end testing.
 
+## Frontend (`frontend/`)
+
+React + TypeScript + Vite. Screens, stack, and screenshots: [frontend/README.md](frontend/README.md).
+
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:5173, proxies to VITE_ORDER_SERVICE_URL (defaults to localhost:8080)
+npm run build    # tsc -b && vite build -> dist/
+```
+
+### Deploy to Firebase Hosting
+
+Live at **[stadium-copilot.web.app](https://stadium-copilot.web.app)**, deployed to the `stadium-copilot` Hosting site under `promptwars-502109` (config in `frontend/firebase.json` / `.firebaserc`):
+
+```bash
+cd frontend
+npm run build
+npx firebase-tools deploy --only hosting --project promptwars-502109
+```
+
+The deployed bundle points at `order-service`'s Cloud Run URL (`https://order-service-5caf7sq2va-uc.a.run.app`) via `VITE_ORDER_SERVICE_URL` baked in at build time (see `frontend/.env.example`). No CI/CD for this yet — it's a manual `.env.local`/`.env.production` + build + deploy, so re-run it after backend API changes:
+
+```bash
+echo "VITE_ORDER_SERVICE_URL=https://order-service-5caf7sq2va-uc.a.run.app" > frontend/.env.production
+```
+
 ## Cost Notes
 
 Not effectively $0 at this scale — two resources are always-on regardless of traffic:
@@ -124,9 +153,10 @@ Rough total if left running a full month: **~$90-110**. Cheapest lever for the j
 
 ## Status
 
-Both MVP services are **built, deployed, and verified end-to-end against real infrastructure** (not mocked):
+Both MVP backend services and the frontend are **built, deployed, and verified end-to-end against real infrastructure** (not mocked):
 
 - ingestion-service: real JWT auth against worldcup26.ir confirmed working, live match data (Norway vs England, QF) observed flowing through Pub/Sub with correct message attributes and no scorer-field leakage, Redis write/read round-trip directly verified.
 - order-service: `GET /menu/:stand_id` returns real Firestore data with a genuine Gemini-generated summary (multi-language confirmed, French tested); `POST /orders` → `GET /orders/:id` round-trips through Firestore; a real `stand_closed_incident` Pub/Sub push was fired and confirmed to reassign an order to an alternate stand with a Gemini-generated message, all reflected correctly in Firestore.
+- frontend: live on Firebase Hosting at [stadium-copilot.web.app](https://stadium-copilot.web.app), built against and calling the real `order-service` Cloud Run endpoint (not mocked/localhost). Menu browsing, cart, order placement, the order-status stepper, the staff order queue, and the match-detail view all confirmed working against real Firestore/Redis-backed data — see [frontend/README.md](frontend/README.md) for screenshots.
 
-**Not yet built**: Firebase Hosting deployment for the frontend (the UI itself — menu browsing, cart, order status, staff queue, match detail, EN/FR/PT — is implemented, see [frontend/README.md](frontend/README.md)), a producer for the `stand-status` topic (order-service defines the consumer contract but nothing publishes real incidents yet), and any notification channel to actually surface reassignment messages to a fan.
+**Not yet built**: a producer for the `stand-status` topic (order-service defines the consumer contract but nothing publishes real incidents yet), and any notification channel to actually surface reassignment messages to a fan.
