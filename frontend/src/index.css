@@ -1,13 +1,40 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
+/* Stadium Copilot brand tokens — from the Figma design
+   (figma.com/make/A9N4r2OriSt1uAAiSEJrJm). Referenced directly by
+   components for things shadcn's semantic tokens don't cover (hero
+   sections, status badges, queue bars). */
+:root {
+  --sc-space: #0e0b1e; /* deep space indigo-black */
+  --sc-space-mid: #1c1830; /* header surface */
+  --sc-ember: #e8321a; /* primary CTA — deep coral-red */
+  --sc-ember-light: #ff5940; /* hover state */
+  --sc-gold: #f5a623; /* live/active amber */
+  --sc-gold-dark: #d4891a; /* gold pressed */
+  --sc-mint: #00b87a; /* success / ready */
+  --sc-mint-light: #dbfaee; /* success bg tint */
+  --sc-rust: #ea5c0c; /* disruption — warm orange, not alarming red */
+  --sc-rust-light: #fef0e5; /* disruption bg tint */
+  --sc-warn: #f59e0b; /* queue warning */
+  --sc-warn-light: #fef9ec; /* warn bg tint */
+  --sc-surface: #f5f4f1; /* warm off-white page background */
+  --sc-surface-2: #ecebe6; /* slightly darker surface */
+  --sc-card: #ffffff;
+  --sc-ink: #0e0b1e; /* body text */
+  --sc-graphite: #52526a; /* secondary text */
+  --sc-mist: #9898b0; /* placeholder / muted */
+  --sc-border: #e0dfe8; /* dividers */
+  --font-display: "Inter", system-ui, sans-serif;
+}
+
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-heading: var(--font-display);
+    --font-sans: var(--font-display);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,30 +76,31 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --background: var(--sc-surface);
+    --foreground: var(--sc-ink);
+    --card: var(--sc-card);
+    --card-foreground: var(--sc-ink);
+    --popover: var(--sc-card);
+    --popover-foreground: var(--sc-ink);
+    --primary: var(--sc-ember);
+    --primary-foreground: #ffffff;
+    --secondary: var(--sc-surface-2);
+    --secondary-foreground: var(--sc-ink);
+    --muted: var(--sc-surface-2);
+    --muted-foreground: var(--sc-graphite);
+    --accent: var(--sc-surface-2);
+    --accent-foreground: var(--sc-ink);
+    --destructive: var(--sc-ember);
+    --destructive-foreground: #ffffff;
+    --border: var(--sc-border);
+    --input: var(--sc-border);
+    --ring: var(--sc-ember);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
+    --radius: 0.75rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -83,48 +111,26 @@
     --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
     }
   body {
     @apply bg-background text-foreground;
+    letter-spacing: -0.01em;
+    /* Safety net: a flex row with unshrinkable text (missing min-w-0)
+       anywhere in the tree can otherwise widen the whole document past
+       the viewport on narrow screens. Real occurrences should still be
+       fixed at the component level — this just stops one from taking
+       out the whole page. */
+    overflow-x: hidden;
     }
   html {
     @apply font-sans;
     }
+}
+
+@keyframes sc-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
 }

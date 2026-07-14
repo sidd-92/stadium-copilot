@@ -1,10 +1,22 @@
 import express from "express";
 import cors from "cors";
 import { getMenuForStand } from "./menu-service";
-import { createOrder, estimateEtaMinutes, getOrder, getStand } from "./order-store";
+import {
+  createOrder,
+  estimateEtaMinutes,
+  getOrder,
+  getOrdersByStandAndStatuses,
+  getStand,
+  isValidTransition,
+  transitionOrder,
+} from "./order-store";
 import { handleStandClosedIncident } from "./disruption-handler";
 import { readAllMatchesFromCache, readMatchFromCache } from "./redis-cache";
-import type { MatchEvent, OrderItem, PubSubPushEnvelope, StandStatusEventPayload } from "./types";
+import type { MatchEvent, OrderItem, OrderStatus, PubSubPushEnvelope, StandStatusEventPayload } from "./types";
+
+// The active (non-terminal, non-disrupted) states a stand's staff screen
+// needs to see and act on, in fulfillment order.
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = ["placed", "confirmed", "preparing", "ready_for_pickup"];
 
 export const app = express();
 
@@ -130,6 +142,51 @@ app.get("/orders/:order_id", async (req, res) => {
     res.status(200).json(order);
   } catch (err) {
     console.error("[order-service] GET /orders/:order_id failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+// Stand-staff action: no real kitchen/POS system exists for this
+// hackathon, so this is the thing that actually moves an order forward —
+// a stand employee taps a button on the /stand/:stand_id screen. Public,
+// unauthenticated for now like the rest of this API; a real deployment
+// would gate this behind staff auth.
+app.patch("/orders/:order_id/status", async (req, res) => {
+  try {
+    const { status } = (req.body ?? {}) as { status?: OrderStatus };
+    if (!status) {
+      res.status(400).json({ error: "status is required" });
+      return;
+    }
+
+    const current = await getOrder(req.params.order_id);
+    if (!current) {
+      res.status(404).json({ error: "order not found" });
+      return;
+    }
+
+    if (!isValidTransition(current.status, status)) {
+      res.status(409).json({ error: `cannot move order from ${current.status} to ${status}` });
+      return;
+    }
+
+    const updated = await transitionOrder(req.params.order_id, status);
+    res.status(200).json(updated);
+  } catch (err) {
+    console.error("[order-service] PATCH /orders/:order_id/status failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+// Stand-staff queue view: every order this stand still needs to act on,
+// oldest first. Backs the /stand/:stand_id screen.
+app.get("/stands/:stand_id/orders", async (req, res) => {
+  try {
+    const orders = await getOrdersByStandAndStatuses(req.params.stand_id, ACTIVE_ORDER_STATUSES);
+    orders.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    res.status(200).json({ orders });
+  } catch (err) {
+    console.error("[order-service] GET /stands/:stand_id/orders failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });

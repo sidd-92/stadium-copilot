@@ -1,4 +1,4 @@
-import type { MatchEvent, MenuResponse, Order, OrderItem, SupportedLanguage } from "./types";
+import type { MatchEvent, MenuResponse, Order, OrderItem, OrderStatus, SupportedLanguage } from "./types";
 
 // order-service is the only public backend surface — ingestion-service is
 // INTERNAL_ONLY and never reachable from the browser.
@@ -67,4 +67,18 @@ export async function getMatch(matchId: string): Promise<MatchEvent | null> {
 export async function getUpcomingMatches(limit = 5): Promise<MatchEvent[]> {
   const { matches } = await request<{ matches: MatchEvent[] }>(`/matches/upcoming?limit=${limit}`);
   return matches;
+}
+
+// Stand-staff actions — no real kitchen/POS system exists, so this is
+// what actually moves an order through the fulfillment lifecycle.
+export async function getStandOrders(standId: string): Promise<Order[]> {
+  const { orders } = await request<{ orders: Order[] }>(`/stands/${encodeURIComponent(standId)}/orders`);
+  return orders;
+}
+
+export function advanceOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
+  return request<Order>(`/orders/${encodeURIComponent(orderId)}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
