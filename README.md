@@ -14,7 +14,7 @@ Both services are built, deployed, and verified end-to-end against real infrastr
 
 ```
 stadium-copilot/
-  frontend/    React + TypeScript + Vite -> Firebase Hosting (not yet built)
+  frontend/    React + TypeScript + Vite -> Firebase Hosting (see frontend/README.md; hosting not yet wired up)
   backend/     Node.js 22 + TypeScript services -> Docker on Cloud Run
     src/ingestion-service/   Polls worldcup26.ir, publishes match events, writes Redis cache
     src/order-service/       Menu browsing, order placement, disruption handling
@@ -129,4 +129,4 @@ Both MVP services are **built, deployed, and verified end-to-end against real in
 - ingestion-service: real JWT auth against worldcup26.ir confirmed working, live match data (Norway vs England, QF) observed flowing through Pub/Sub with correct message attributes and no scorer-field leakage, Redis write/read round-trip directly verified.
 - order-service: `GET /menu/:stand_id` returns real Firestore data with a genuine Gemini-generated summary (multi-language confirmed, French tested); `POST /orders` → `GET /orders/:id` round-trips through Firestore; a real `stand_closed_incident` Pub/Sub push was fired and confirmed to reassign an order to an alternate stand with a Gemini-generated message, all reflected correctly in Firestore.
 
-**Not yet built**: frontend (React/Vite/Firebase Hosting scaffold exists but is empty), a producer for the `stand-status` topic (order-service defines the consumer contract but nothing publishes real incidents yet), and any notification channel to actually surface reassignment messages to a fan.
+**Not yet built**: Firebase Hosting deployment for the frontend (the UI itself — menu browsing, cart, order status, staff queue, match detail, EN/FR/PT — is implemented, see [frontend/README.md](frontend/README.md)), a producer for the `stand-status` topic (order-service defines the consumer contract but nothing publishes real incidents yet), and any notification channel to actually surface reassignment messages to a fan.
