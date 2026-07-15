@@ -13,7 +13,7 @@ function renderStepper(status: OrderStatus) {
   );
 }
 
-const STEPS: OrderStatus[] = ["placed", "confirmed", "preparing", "ready_for_pickup", "collected"];
+const STEPS: Exclude<OrderStatus, "disrupted">[] = ["placed", "confirmed", "preparing", "ready_for_pickup", "collected"];
 
 const STEP_LABEL_KEY: Record<Exclude<OrderStatus, "disrupted">, string> = {
   placed: "orderPlaced",
