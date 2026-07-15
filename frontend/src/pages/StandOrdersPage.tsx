@@ -4,8 +4,9 @@ import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { advanceOrderStatus, getStandOrders } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
+import { errorMessage } from "@/lib/utils";
 import type { Order, OrderStatus } from "@/lib/types";
 
 // No real kitchen/POS system exists for this hackathon — this screen
@@ -46,7 +47,7 @@ export function StandOrdersPage() {
       await advanceOrderStatus(order.order_id, next);
       toast.success(`Order moved to ${t[STEP_LABEL_KEY[next]]}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update order");
+      toast.error(errorMessage(err, "Failed to update order"));
     } finally {
       setAdvancing(null);
     }

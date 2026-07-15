@@ -1,8 +1,13 @@
-import type { MenuItem, OrderItem } from "@/lib/types";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import type { MenuItem, OrderItem } from "@/lib/types";
 
+// Line-item cart editor, opened from the sticky cart bar. OrderItem
+// (what useCart persists to localStorage) has no price field, so each
+// line's price is joined against the current menu response here rather
+// than stored on the cart item — prices are the menu's source of truth,
+// not something the cart should cache and risk going stale.
 export function CartSheet({
   items,
   menu,

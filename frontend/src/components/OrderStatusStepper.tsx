@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle, Loader2, Package } from "lucide-react";
 import type { OrderStatus } from "@/lib/types";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
 
 const STEPS: OrderStatus[] = ["placed", "confirmed", "preparing", "ready_for_pickup", "collected"];
@@ -45,6 +45,9 @@ export function OrderStatusStepper({ status }: { status: OrderStatus }) {
                       : "bg-[var(--sc-surface-2)] text-[var(--sc-border)]"
                 }`}
               >
+                {/* Precedence: done (check) > actively preparing (spinner) >
+                    current-but-not-preparing (package for "placed", check
+                    for the rest) > not-yet-reached (empty circle). */}
                 {isDone ? (
                   <CheckCircle2 size={20} />
                 ) : isPreparingNow ? (

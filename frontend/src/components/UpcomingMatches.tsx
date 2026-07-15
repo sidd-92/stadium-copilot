@@ -1,6 +1,6 @@
 import { getUpcomingMatches } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
 import { formatKickoffLocal } from "@/lib/kickoff-time";
 import { Skeleton } from "@/components/ui/skeleton";

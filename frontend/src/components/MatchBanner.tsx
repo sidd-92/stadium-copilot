@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getMatch } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
 import { Skeleton } from "@/components/ui/skeleton";
 

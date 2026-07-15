@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { getOrder } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
 import { OrderStatusStepper } from "@/components/OrderStatusStepper";
 import { DisruptionAlert } from "@/components/DisruptionAlert";

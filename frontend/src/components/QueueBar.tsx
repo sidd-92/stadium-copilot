@@ -1,4 +1,4 @@
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
 
 // Thresholds mirror menu-service.ts's queueLabel() on the backend so the

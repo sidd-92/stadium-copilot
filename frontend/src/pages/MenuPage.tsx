@@ -4,8 +4,9 @@ import { toast } from "sonner";
 import { getMenu, placeOrder } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
 import { useCart } from "@/hooks/useCart";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
+import { errorMessage } from "@/lib/utils";
 import { MatchBanner } from "@/components/MatchBanner";
 import { UpcomingMatches } from "@/components/UpcomingMatches";
 import { DietaryFilterBar } from "@/components/DietaryFilterBar";
@@ -14,6 +15,10 @@ import { CartSheet } from "@/components/CartSheet";
 import { QueueBar } from "@/components/QueueBar";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// The fan-facing QR-scan landing screen: live match banner, stand header,
+// dietary filtering, and the menu itself, backed by a 30s poll so queue
+// length and stock stay current while browsing. Cart state lives in
+// useCart (localStorage-backed) and is only submitted on "Place order".
 export function MenuPage() {
   const { standId } = useParams<{ standId: string }>();
   const navigate = useNavigate();
@@ -42,7 +47,7 @@ export function MenuPage() {
       toast.success("Order placed!");
       navigate(`/orders/${order.order_id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to place order");
+      toast.error(errorMessage(err, "Failed to place order"));
     } finally {
       setPlacing(false);
     }

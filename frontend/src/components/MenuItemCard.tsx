@@ -1,6 +1,6 @@
-import type { MenuItem, OrderItem } from "@/lib/types";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
+import type { MenuItem, OrderItem } from "@/lib/types";
 
 // No item images/colors come from the backend, so derive a stable color
 // per item_id — same visual language as the design's color-coded swatch,
@@ -13,6 +13,10 @@ function swatchColor(itemId: string): string {
   return SWATCH_COLORS[hash % SWATCH_COLORS.length];
 }
 
+// One menu item row: swatch, name/tags/price, and an add/stepper control
+// that switches from a "+" button to a quantity stepper once the item is
+// in the cart (quantity is read from the cart, not local state, so it
+// stays in sync if the same item is adjusted from the cart sheet too).
 export function MenuItemCard({
   item,
   cartItem,

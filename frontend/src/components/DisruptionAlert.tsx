@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Navigation, ShoppingBag, ArrowRight } from "lucide-react";
 import type { Order, MenuResponse } from "@/lib/types";
 import { getMenu } from "@/lib/api";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/hooks/useLanguage";
 import { T } from "@/lib/translations";
 import { QueueBar } from "@/components/QueueBar";
 
@@ -20,7 +20,6 @@ export function DisruptionAlert({ order }: { order: Order }) {
     if (order.reassigned_to_stand_id) {
       getMenu(order.reassigned_to_stand_id).then(setAltStand).catch(() => setAltStand(null));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.status, order.stand_id, order.reassigned_to_stand_id]);
 
   if (order.status !== "disrupted") return null;
