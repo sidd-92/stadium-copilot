@@ -1,3 +1,6 @@
+// Firestore access layer for order-service: stand lookups, order
+// CRUD/status transitions, and the queue-based ETA estimate. The only
+// file in this service that talks to Firestore directly.
 import { Firestore } from "@google-cloud/firestore";
 import type { Order, OrderItem, OrderStatus, Stand } from "./types";
 
