@@ -28,6 +28,7 @@ npm install
 npm run dev      # http://localhost:5173
 npm run build    # tsc -b && vite build
 npm run lint      # oxlint
+npm test          # vitest run
 ```
 
 Point the dev server at a running `order-service` (see `../backend/README` equivalent in the root README) via `.env.local`:
@@ -44,7 +45,7 @@ Without this, it defaults to `http://localhost:8080` anyway. Screens that need s
 - **Styling**: Tailwind v4 + a small custom token set (`--sc-*` CSS vars in `src/index.css`) rather than a full design system — this is a hackathon-scoped UI, not a component library.
 - **UI primitives**: shadcn/Base UI components under `src/components/ui/`
 - **State**: no global store — `useCart` (localStorage-backed) and `usePolling` (interval-based refetch) are the only custom hooks; everything else is local component state.
-- **Language**: `LanguageProvider` (`src/lib/language.tsx`) + `T[language]` string lookups (`src/lib/translations.ts`)
+- **Language**: `LanguageProvider` (`src/lib/language.tsx`) + `useLanguage` (`src/hooks/useLanguage.ts`) + `T[language]` string lookups (`src/lib/translations.ts`)
 
 ## Deployment
 

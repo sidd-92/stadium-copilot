@@ -20,6 +20,7 @@ stadium-copilot/
   backend/     Node.js 22 + TypeScript services -> Docker on Cloud Run
     src/ingestion-service/   Polls worldcup26.ir, publishes match events, writes Redis cache
     src/order-service/       Menu browsing, order placement, disruption handling
+    src/shared/              Redis client config, date parsing, logging — used by both services
   infra/       Terraform (one-command provision/teardown)
   .github/     CI workflows (lint, build, test)
 ```
@@ -85,7 +86,8 @@ terraform destroy -var="gcp_project_id=promptwars-502109"
 ```bash
 cd backend
 npm install
-npm test              # 35 tests: unit + mocked-dependency + HTTP-layer integration, no network required
+npm test              # 47 tests: unit + mocked-dependency + HTTP-layer integration, no network required
+npm run lint            # oxlint
 npm run build          # tsc -> dist/
 
 npm run dev:ingestion   # tsx watch, local dev server
