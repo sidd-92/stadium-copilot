@@ -1,5 +1,10 @@
 const PRESET_TAGS = ["vegan", "vegetarian", "nut-free", "gluten-free", "dairy-free"];
 
+// Horizontally-scrolling chip row above the menu list. Selecting a tag
+// drives the `dietary` query param sent to GET /menu/:stand_id — the
+// actual filtering happens server-side (see order-service/menu-service.ts
+// filterAndSortMenu), this component only tracks which chips are toggled
+// on.
 export function DietaryFilterBar({
   selected,
   onToggle,
