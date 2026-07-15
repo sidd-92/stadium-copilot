@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { getMockGames, resetMockCursor } from "../mock-data";
+import { getMockGames, __resetMockCursorForTests } from "../mock-data";
 
 describe("getMockGames", () => {
   beforeEach(() => {
-    resetMockCursor();
+    __resetMockCursorForTests();
   });
 
   it("cycles notstarted -> live 0-0 -> live with a goal -> finished, then wraps", () => {
@@ -28,10 +28,10 @@ describe("getMockGames", () => {
     expect(wrapped.time_elapsed).toBe("notstarted");
   });
 
-  it("resetMockCursor() returns the sequence to the start", () => {
+  it("__resetMockCursorForTests() returns the sequence to the start", () => {
     getMockGames();
     getMockGames();
-    resetMockCursor();
+    __resetMockCursorForTests();
 
     expect(getMockGames()[0].time_elapsed).toBe("notstarted");
   });

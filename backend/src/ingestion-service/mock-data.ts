@@ -19,6 +19,8 @@ export function getMockGames(): RawMatch[] {
   return state.games;
 }
 
-export function resetMockCursor(): void {
+// Test-only: module-level cursor otherwise leaks across test cases (see
+// worldcup26-client.ts's __resetTokenCacheForTests for the same pattern).
+export function __resetMockCursorForTests(): void {
   cursor = 0;
 }
