@@ -1,4 +1,5 @@
-import Redis from "ioredis";
+import type Redis from "ioredis";
+import { createRedisClient } from "../shared/redis-client";
 import type { MatchEvent } from "./types";
 
 // Fan-facing reads hit this cache, never worldcup26.ir or this service
@@ -18,12 +19,7 @@ let client: Redis | null = null;
 
 function getClient(): Redis {
   if (!client) {
-    client = new Redis({
-      host: process.env.REDIS_HOST ?? "127.0.0.1",
-      port: process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379,
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-    });
+    client = createRedisClient();
   }
   return client;
 }

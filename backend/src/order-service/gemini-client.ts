@@ -1,5 +1,12 @@
+// Vertex AI (Gemini) client for order-service: menu summaries and
+// disruption-reassignment messages are both generated here. Also owns
+// the EN/FR/PT language-normalization helpers shared by menu-service.ts
+// and disruption-handler.ts, since both need it to build Gemini prompts.
 import type { GoogleGenAI as GoogleGenAIType } from "@google/genai";
 import { GoogleAuth } from "google-auth-library";
+import { createLogger } from "../shared/logger";
+
+const logger = createLogger("order-service");
 
 // gemini-2.5-flash is the current Vertex AI Flash model as of writing
 // (retirement date Oct 16 2026, well past this hackathon). Overridable so
@@ -71,7 +78,7 @@ export async function generateShortText(systemInstruction: string, dataBlock: st
     const text = response.text?.trim();
     return text && text.length > 0 ? text : "";
   } catch (err) {
-    console.error("[order-service] Gemini call failed:", err);
+    logger.error("Gemini call failed:", err);
     return "";
   }
 }

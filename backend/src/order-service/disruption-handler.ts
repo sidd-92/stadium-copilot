@@ -1,6 +1,9 @@
 import { getOrdersByStandAndStatuses, getStand, getStandsByMatch, transitionOrder } from "./order-store";
 import { generateShortText, LANGUAGE_NAMES, normalizeLanguage, type SupportedLanguage } from "./gemini-client";
+import { createLogger } from "../shared/logger";
 import type { Order, OrderItem, OrderStatus, Stand } from "./types";
+
+const logger = createLogger("order-service");
 
 // ready_for_pickup is deliberately excluded: the food is already made, so
 // a stand closure downstream shouldn't disrupt an order that's basically
@@ -81,7 +84,7 @@ export async function handleStandClosedIncident(standId: string, language?: stri
     const alternates = findAlternateStands(order.items, allStands, closedStand);
     const chosen = alternates[0] ?? null;
     const message = await buildReassignmentMessage(order, chosen, lang);
-    console.log(`[order-service] order ${order.order_id} disrupted: ${message}`);
+    logger.log(`order ${order.order_id} disrupted: ${message}`);
 
     try {
       await transitionOrder(order.order_id, "disrupted", {
@@ -94,7 +97,7 @@ export async function handleStandClosedIncident(standId: string, language?: stri
       // processor is wired up for this hackathon — Firestore status is
       // the only thing updated.
     } catch (err) {
-      console.error(`[order-service] failed to transition order ${order.order_id} to disrupted:`, err);
+      logger.error(`failed to transition order ${order.order_id} to disrupted:`, err);
     }
   }
 

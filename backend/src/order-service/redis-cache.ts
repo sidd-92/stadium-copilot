@@ -1,4 +1,5 @@
-import Redis from "ioredis";
+import type Redis from "ioredis";
+import { createRedisClient } from "../shared/redis-client";
 
 // Read-only counterpart to ingestion-service's redis-cache.ts — this
 // service never writes match data, only reads what ingestion-service
@@ -8,12 +9,7 @@ let client: Redis | null = null;
 
 function getClient(): Redis {
   if (!client) {
-    client = new Redis({
-      host: process.env.REDIS_HOST ?? "127.0.0.1",
-      port: process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379,
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-    });
+    client = createRedisClient();
   }
   return client;
 }

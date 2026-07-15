@@ -1,5 +1,10 @@
-import express from "express";
+// order-service's Express app: the only public HTTP surface in this
+// codebase (ingestion-service is INTERNAL_ONLY). Wires up menu browsing,
+// order placement/lookup/status transitions, the staff order queue, live
+// match reads (backed by ingestion-service's Redis cache), and the
+// Pub/Sub push endpoint that drives disruption handling.
 import cors from "cors";
+import express from "express";
 import { getMenuForStand } from "./menu-service";
 import {
   createOrder,
@@ -12,7 +17,11 @@ import {
 } from "./order-store";
 import { handleStandClosedIncident } from "./disruption-handler";
 import { readAllMatchesFromCache, readMatchFromCache } from "./redis-cache";
+import { parseLocalDate } from "../shared/date-utils";
+import { createLogger } from "../shared/logger";
 import type { MatchEvent, OrderItem, OrderStatus, PubSubPushEnvelope, StandStatusEventPayload } from "./types";
+
+const logger = createLogger("order-service");
 
 // The active (non-terminal, non-disrupted) states a stand's staff screen
 // needs to see and act on, in fulfillment order.
@@ -49,21 +58,21 @@ app.get("/menu/:stand_id", async (req, res) => {
 
     res.status(200).json(result);
   } catch (err) {
-    console.error("[order-service] GET /menu/:stand_id failed:", err);
+    logger.error("GET /menu/:stand_id failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
 
 app.post("/orders", async (req, res) => {
   try {
-    const { stand_id, items } = (req.body ?? {}) as { stand_id?: string; items?: OrderItem[] };
+    const { stand_id: standId, items } = (req.body ?? {}) as { stand_id?: string; items?: OrderItem[] };
 
-    if (!stand_id || !Array.isArray(items) || items.length === 0) {
+    if (!standId || !Array.isArray(items) || items.length === 0) {
       res.status(400).json({ error: "stand_id and a non-empty items array are required" });
       return;
     }
 
-    const stand = await getStand(stand_id);
+    const stand = await getStand(standId);
     if (!stand) {
       res.status(404).json({ error: "stand not found" });
       return;
@@ -73,25 +82,15 @@ app.post("/orders", async (req, res) => {
       return;
     }
 
-    const order = await createOrder({ match_id: stand.match_id, stand_id, items });
+    const order = await createOrder({ match_id: stand.match_id, stand_id: standId, items });
     const eta_minutes = estimateEtaMinutes(stand.queue_length_estimate, items);
 
     res.status(201).json({ ...order, eta_minutes });
   } catch (err) {
-    console.error("[order-service] POST /orders failed:", err);
+    logger.error("POST /orders failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
-
-// worldcup26.ir's local_date is "MM/DD/YYYY HH:mm" — not directly
-// sortable as a string, so parse it into a real Date for ordering.
-// Malformed/missing dates sort last rather than throwing.
-function parseLocalDate(localDate: string): number {
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/.exec(localDate);
-  if (!match) return Number.POSITIVE_INFINITY;
-  const [, month, day, year, hour, minute] = match;
-  return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
-}
 
 // Upcoming schedule, soonest first. Backed by ingestion-service's
 // full-schedule snapshot (matches:all) — must be registered before
@@ -108,7 +107,7 @@ app.get("/matches/upcoming", async (req, res) => {
 
     res.status(200).json({ matches: upcoming });
   } catch (err) {
-    console.error("[order-service] GET /matches/upcoming failed:", err);
+    logger.error("GET /matches/upcoming failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
@@ -127,7 +126,7 @@ app.get("/matches/:match_id", async (req, res) => {
     }
     res.status(200).json(match);
   } catch (err) {
-    console.error("[order-service] GET /matches/:match_id failed:", err);
+    logger.error("GET /matches/:match_id failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
@@ -141,7 +140,7 @@ app.get("/orders/:order_id", async (req, res) => {
     }
     res.status(200).json(order);
   } catch (err) {
-    console.error("[order-service] GET /orders/:order_id failed:", err);
+    logger.error("GET /orders/:order_id failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
@@ -173,7 +172,7 @@ app.patch("/orders/:order_id/status", async (req, res) => {
     const updated = await transitionOrder(req.params.order_id, status);
     res.status(200).json(updated);
   } catch (err) {
-    console.error("[order-service] PATCH /orders/:order_id/status failed:", err);
+    logger.error("PATCH /orders/:order_id/status failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
@@ -186,7 +185,7 @@ app.get("/stands/:stand_id/orders", async (req, res) => {
     orders.sort((a, b) => a.created_at.localeCompare(b.created_at));
     res.status(200).json({ orders });
   } catch (err) {
-    console.error("[order-service] GET /stands/:stand_id/orders failed:", err);
+    logger.error("GET /stands/:stand_id/orders failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
@@ -202,7 +201,7 @@ app.post("/events/stand-status", async (req, res) => {
     const message = envelope?.message;
 
     if (!message?.data) {
-      console.warn("[order-service] /events/stand-status received a push envelope with no message data");
+      logger.warn("/events/stand-status received a push envelope with no message data");
       res.status(200).send("ok");
       return;
     }
@@ -214,15 +213,15 @@ app.post("/events/stand-status", async (req, res) => {
     const eventType = payload.event_type ?? message.attributes?.event_type;
 
     if (!standId || eventType !== "stand_closed_incident") {
-      console.log(`[order-service] ignoring stand-status event (stand_id=${standId}, event_type=${eventType})`);
+      logger.log(`ignoring stand-status event (stand_id=${standId}, event_type=${eventType})`);
       res.status(200).send("ok");
       return;
     }
 
     const result = await handleStandClosedIncident(standId, payload.language);
-    console.log(`[order-service] stand_closed_incident for ${standId}: disrupted ${result.disrupted_count} orders`);
+    logger.log(`stand_closed_incident for ${standId}: disrupted ${result.disrupted_count} orders`);
   } catch (err) {
-    console.error("[order-service] failed to process stand-status event:", err);
+    logger.error("failed to process stand-status event:", err);
   }
 
   res.status(200).send("ok");

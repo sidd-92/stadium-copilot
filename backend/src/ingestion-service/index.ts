@@ -1,6 +1,8 @@
 import express from "express";
 import { runPollLoop } from "./poll";
+import { createLogger } from "../shared/logger";
 
+const logger = createLogger("ingestion");
 const app = express();
 const port = process.env.PORT ? Number(process.env.PORT) : 8080;
 
@@ -10,7 +12,7 @@ app.post("/poll", async (_req, res) => {
   try {
     await runPollLoop();
   } catch (err) {
-    console.error("[ingestion] unexpected error escaped the poll loop:", err);
+    logger.error("unexpected error escaped the poll loop:", err);
   }
   res.status(200).send("ok");
 });

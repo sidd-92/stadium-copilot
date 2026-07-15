@@ -2,7 +2,10 @@ import { checkHealth, fetchGames, RateLimitedError, UpstreamError } from "./worl
 import { publishMatchEvent } from "./pubsub-publisher";
 import { writeAllMatchesToCache, writeMatchToCache } from "./redis-cache";
 import { getMockGames } from "./mock-data";
+import { createLogger } from "../shared/logger";
 import type { MatchEvent, RawMatch } from "./types";
+
+const logger = createLogger("ingestion");
 
 // Cloud Scheduler triggers /poll every 1 minute (its minimum granularity)
 // with a 120s attempt_deadline. We internally loop inside that single
@@ -52,7 +55,7 @@ export async function processLiveMatches(games: RawMatch[]): Promise<MatchEvent[
   try {
     await writeAllMatchesToCache(allEvents);
   } catch (err) {
-    console.error("[ingestion] failed to write full match snapshot to cache:", err);
+    logger.error("failed to write full match snapshot to cache:", err);
   }
 
   for (const event of liveEvents) {
@@ -61,12 +64,12 @@ export async function processLiveMatches(games: RawMatch[]): Promise<MatchEvent[
     try {
       await writeMatchToCache(event);
     } catch (err) {
-      console.error(`[ingestion] failed to write match ${event.match_id} to cache:`, err);
+      logger.error(`failed to write match ${event.match_id} to cache:`, err);
     }
     try {
       await publishMatchEvent(event);
     } catch (err) {
-      console.error(`[ingestion] failed to publish match ${event.match_id}:`, err);
+      logger.error(`failed to publish match ${event.match_id}:`, err);
     }
   }
 
@@ -85,14 +88,14 @@ export async function pollOnce(): Promise<CycleResult> {
     return "ok";
   } catch (err) {
     if (err instanceof RateLimitedError) {
-      console.warn("[ingestion] rate limited (429) — skipping remainder of this cycle, not retrying");
+      logger.warn("rate limited (429) — skipping remainder of this cycle, not retrying");
       return "rate_limited";
     }
 
     if (err instanceof UpstreamError) {
       // Non-200 from worldcup26.ir: leave last-known-good Redis data in
       // place (we simply don't write), log, and move on.
-      console.error("[ingestion] upstream error, leaving cached data in place:", err.message);
+      logger.error("upstream error, leaving cached data in place:", err.message);
       return "upstream_error";
     }
 
@@ -100,8 +103,8 @@ export async function pollOnce(): Promise<CycleResult> {
     // auth) to tell "API fully down" apart from "my token is bad" —
     // this makes debugging far easier than a generic catch-all error.
     const healthy = await checkHealth();
-    console.error(
-      `[ingestion] poll failed (${healthy ? "worldcup26.ir /health is OK — likely an auth problem" : "worldcup26.ir /health also failing — API appears down"}):`,
+    logger.error(
+      `poll failed (${healthy ? "worldcup26.ir /health is OK — likely an auth problem" : "worldcup26.ir /health also failing — API appears down"}):`,
       err,
     );
     return "upstream_error";
