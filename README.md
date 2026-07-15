@@ -123,6 +123,7 @@ cd frontend
 npm install
 npm run dev      # http://localhost:5173, proxies to VITE_ORDER_SERVICE_URL (defaults to localhost:8080)
 npm run build    # tsc -b && vite build -> dist/
+npm test         # 46 tests: Vitest + React Testing Library, jsdom, no network required
 ```
 
 ### Deploy to Firebase Hosting
@@ -157,6 +158,6 @@ Both MVP backend services and the frontend are **built, deployed, and verified e
 
 - ingestion-service: real JWT auth against worldcup26.ir confirmed working, live match data (Norway vs England, QF) observed flowing through Pub/Sub with correct message attributes and no scorer-field leakage, Redis write/read round-trip directly verified.
 - order-service: `GET /menu/:stand_id` returns real Firestore data with a genuine Gemini-generated summary (multi-language confirmed, French tested); `POST /orders` → `GET /orders/:id` round-trips through Firestore; a real `stand_closed_incident` Pub/Sub push was fired and confirmed to reassign an order to an alternate stand with a Gemini-generated message, all reflected correctly in Firestore.
-- frontend: live on Firebase Hosting at [stadium-copilot.web.app](https://stadium-copilot.web.app), built against and calling the real `order-service` Cloud Run endpoint (not mocked/localhost). Menu browsing, cart, order placement, the order-status stepper, the staff order queue, and the match-detail view all confirmed working against real Firestore/Redis-backed data — see [frontend/README.md](frontend/README.md) for screenshots.
+- frontend: live on Firebase Hosting at [stadium-copilot.web.app](https://stadium-copilot.web.app), built against and calling the real `order-service` Cloud Run endpoint (not mocked/localhost). Menu browsing, cart, order placement, the order-status stepper, the staff order queue, and the match-detail view all confirmed working against real Firestore/Redis-backed data — see [frontend/README.md](frontend/README.md) for screenshots. Covered by 46 Vitest + React Testing Library tests (`cd frontend && npm test`) over the highest-risk logic: cart math, API error handling (including the documented `getMatch` 404→null behavior), the disruption-alert and order-status-stepper components, the polling hook's interval/cleanup behavior, and language switching.
 
 **Not yet built**: a producer for the `stand-status` topic (order-service defines the consumer contract but nothing publishes real incidents yet), and any notification channel to actually surface reassignment messages to a fan.

@@ -26,7 +26,7 @@ jobs:
             - run: npm test --if-present
 
     frontend:
-        name: Frontend (lint, build)
+        name: Frontend (lint, build, test)
         runs-on: ubuntu-latest
         defaults:
             run:
@@ -41,6 +41,7 @@ jobs:
             - run: npm ci
             - run: npm run lint --if-present
             - run: npm run build --if-present
+            - run: npm test --if-present
 
     terraform-fmt-check:
         name: Terraform format check
